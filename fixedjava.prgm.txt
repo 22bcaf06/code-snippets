@@ -1,0 +1,29 @@
+import java.util.Scanner; // Fixed import statement
+
+public class PrimeNumber { // Fixed class name, use camel case convention
+
+    public static void main(String args[]) {
+        Scanner sc = new Scanner(System.in);
+        int num1, num2;
+
+        System.out.println("Please enter the first number:"); // Added semicolon at the end
+        num1 = sc.nextInt(); // Added semicolon at the end
+
+        System.out.println("Please enter the second number:");
+        num2 = sc.nextInt();
+
+        System.out.println("Prime numbers:");
+
+        for (int i = num1; i <= num2; i++) {
+            int j;
+            for (j = 2; j < i; j++) { // Removed semicolon
+                if (i % j == 0) {
+                    break;
+                }
+            }
+            if (i == j) {
+                System.out.print("  " + i);
+            }
+        }
+    }
+}

@@ -1,0 +1,325 @@
+Imports System.Windows.Forms.VisualStyles.VisualStyleElement
+Imports MySql.Data.MySqlClient
+Public Class Form4
+    Dim serviceTypeAmounts As New Dictionary(Of String, Decimal)
+    Private connectionString As String = "server=localhost;username=root;password=101010;database=automanager"
+    Private Sub InsertData(ByVal service_Id As String, ByVal vid As String, ByVal service_Type As String, ByVal description As String, ByVal amount As Decimal)
+        Using connection As New MySqlConnection(connectionString)
+            Try
+                connection.Open()
+
+                ' Retrieve the maximum length of the description column from the database schema
+                Dim maxDescriptionLength As Integer = 0
+                Dim schemaQuery As String = "SELECT CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'service_type' AND COLUMN_NAME = 'description'"
+                Using schemaCommand As New MySqlCommand(schemaQuery, connection)
+                    Dim result As Object = schemaCommand.ExecuteScalar()
+                    If result IsNot Nothing AndAlso Not DBNull.Value.Equals(result) Then
+                        maxDescriptionLength = Convert.ToInt32(result)
+                    End If
+                End Using
+
+                If maxDescriptionLength > 0 Then
+                    ' Truncate the description if it exceeds the maximum length
+                    If description.Length > maxDescriptionLength Then
+                        description = description.Substring(0, maxDescriptionLength)
+                    End If
+                Else
+                    MessageBox.Show("Error: Unable to retrieve the maximum length of the description column from the database.")
+                    Return
+                End If
+
+                ' Insert data into the database
+                Dim query As String = "INSERT INTO service_type (Service_id,vid, service_type, description, amount) VALUES (@Service_Id, @vid, @service_type, @description, @amount)"
+                Using command As New MySqlCommand(query, connection)
+                    command.Parameters.AddWithValue("@Service_Id", service_Id)
+                    command.Parameters.AddWithValue("@vid", vid)
+                    command.Parameters.AddWithValue("@service_Type", service_Type)
+                    command.Parameters.AddWithValue("@description", description)
+                    command.Parameters.AddWithValue("@amount", amount)
+                    command.ExecuteNonQuery()
+                End Using
+            Catch ex As Exception
+                MessageBox.Show("Error: " & ex.Message)
+            End Try
+        End Using
+    End Sub
+
+
+    Dim valuesAndDescriptions() As KeyValuePair(Of String, String) = {
+    New KeyValuePair(Of String, String)("Routine Maintenance",
+        "1. Oil change" & vbCrLf &
+        "2. Tire rotation" & vbCrLf &
+        "3. Brake inspection and service" & vbCrLf &
+        "4. Fluid checks and top-ups (coolant, transmission fluid, brake fluid, etc.)" & vbCrLf &
+        "5. Air filter replacement" & vbCrLf &
+        "6. Cabin air filter replacement" & vbCrLf &
+        "7. Spark plug replacement" & vbCrLf &
+        "8. Battery inspection and replacement"),
+    New KeyValuePair(Of String, String)("Diagnostic Services",
+        "1. Engine diagnostics" & vbCrLf &
+        "2. Electrical system diagnostics" & vbCrLf &
+        "3. Computerized vehicle analysis"),
+    New KeyValuePair(Of String, String)("Repair Services",
+        "1. Engine repair" & vbCrLf &
+        "2. Transmission repair" & vbCrLf &
+        "3. Suspension repair" & vbCrLf &
+        "4. Steering system repair" & vbCrLf &
+        "5. Exhaust system repair" & vbCrLf &
+        "6. HVAC system repair (Heating, Ventilation, and Air Conditioning)" & vbCrLf &
+        "7. Bodywork and dent repair" & vbCrLf &
+        "8. Paint touch-ups"),
+    New KeyValuePair(Of String, String)("Tire Services",
+        "1. Tire installation" & vbCrLf &
+        "2. Tire balancing" & vbCrLf &
+        "3. Tire alignment" & vbCrLf &
+        "4. Tire repair (patching punctures, etc.)" & vbCrLf &
+        "5. Tire replacement"),
+    New KeyValuePair(Of String, String)("Detailing Services",
+        "1. Interior cleaning (vacuuming, upholstery cleaning, etc.)" & vbCrLf &
+        "2. Exterior cleaning (washing, waxing, polishing)" & vbCrLf &
+        "3. Paint protection (ceramic coating, sealants)" & vbCrLf &
+        "4. Headlight restoration" & vbCrLf &
+        "5. Wheel cleaning and polishing"),
+    New KeyValuePair(Of String, String)("Electronics Services",
+        "1. Installation of aftermarket electronics (stereo systems, speakers, alarms, etc.)" & vbCrLf &
+        "2. Troubleshooting and repair of electrical systems (lights, power windows, etc.)" & vbCrLf &
+        "3. Installation of accessories (GPS systems, dash cams, etc.)")
+     }
+
+
+    Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
+        ' Validate input fields
+        If TextBox1.Text = "" OrElse TextBox3.Text = "" OrElse ComboBox1.SelectedItem Is Nothing OrElse RichTextBox1.Text = "" Then
+            MessageBox.Show("Fill every detail", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Return
+        End If
+
+
+        ' Get data from TextBox, ComboBox, and RichTextBox
+        Dim Service_Id As String = TextBox1.Text
+        Dim vid As String = TextBox3.Text
+        Dim service_Type As String = ComboBox1.SelectedItem.ToString()
+        Dim amount As Decimal = Decimal.Parse(TextBox2.Text)
+        Dim description As String = RichTextBox1.Text
+
+        ' Call InsertData method to insert into database
+        InsertData(Service_Id, vid, service_Type, description, amount)
+        MessageBox.Show("Details entered successfully", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        LoadDataIntoDataGridView() ' Reload data
+    End Sub
+    Private Sub Form4_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+        serviceTypeAmounts.Add("Routine Maintenance", 100.0)
+        serviceTypeAmounts.Add("Diagnostic Services", 150.0)
+        serviceTypeAmounts.Add("Repair Services", 200.0)
+        serviceTypeAmounts.Add("Tire Services", 5000.0)
+        serviceTypeAmounts.Add("Detailing Services", 10000.0)
+        serviceTypeAmounts.Add("Electronic services", 15000.0)
+        For Each pair As KeyValuePair(Of String, String) In valuesAndDescriptions
+            ComboBox1.Items.Add(pair.Key)
+        Next
+
+        ' Add columns to the DataGridView
+        DataGridView1.Columns.Add("Service_id Column", "Service_id")
+        DataGridView1.Columns.Add("vid Column", "vid")
+        DataGridView1.Columns.Add(" service_type Column", "service_type")
+        DataGridView1.Columns.Add("Description Column", "Description")
+        DataGridView1.Columns.Add("Amount column", "amount")
+        ' Load data into DataGridView
+        LoadDataIntoDataGridView()
+        Me.WindowState = FormWindowState.Maximized
+    End Sub
+    Private Sub LoadDataIntoDataGridView()
+        Using connection As New MySqlConnection(connectionString)
+            Try
+                connection.Open()
+                Dim query As String = "SELECT * FROM service_type"
+                Using command As New MySqlCommand(query, connection)
+                    Using reader As MySqlDataReader = command.ExecuteReader()
+                        DataGridView1.Rows.Clear() ' Clear existing rows before loading new data
+                        While reader.Read()
+                            ' Add each row of data to the DataGridView
+                            DataGridView1.Rows.Add(reader("Service_id"), reader("vid"), reader("service_type"), reader("description"), reader("amount"))
+                        End While
+                    End Using
+                End Using
+            Catch ex As Exception
+                MessageBox.Show("Error: " & ex.Message)
+            End Try
+        End Using
+    End Sub
+
+    Private Sub DeleteData(ByVal Service_Id As String)
+        Using connection As New MySqlConnection(connectionString)
+            Try
+                connection.Open()
+                Dim query As String = "DELETE FROM service_type WHERE Service_id = @Service_Id"
+                Using command As New MySqlCommand(query, connection)
+                    command.Parameters.AddWithValue("@Service_Id", Service_Id)
+                    Dim rowsAffected As Integer = command.ExecuteNonQuery()
+                    If rowsAffected > 0 Then
+                        MessageBox.Show("Data deleted successfully.")
+                        LoadDataIntoDataGridView() ' Reload data after deletion
+                    Else
+                        MessageBox.Show("No data deleted. Service ID not found.")
+                    End If
+                End Using
+            Catch ex As Exception
+                MessageBox.Show("Error: " & ex.Message)
+            End Try
+        End Using
+    End Sub
+
+    Private Sub Button3_Click(sender As Object, e As EventArgs) Handles Button3.Click
+        Form2.Show()
+        Me.Hide()
+    End Sub
+    Private Sub TextBox1_TextChanged(sender As Object, e As EventArgs) Handles TextBox1.TextChanged
+        If Not String.IsNullOrEmpty(TextBox1.Text) AndAlso Not (TextBox1.Text.Any(Function(c) Char.IsLetter(c)) AndAlso TextBox1.Text.Any(Function(c) Char.IsDigit(c))) Then
+            MessageBox.Show("Please enter both alphabetic and numeric characters in Service ID.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        End If
+    End Sub
+    Private Sub Button2_Click(sender As Object, e As EventArgs) Handles Button2.Click
+        ' Clear all input fields
+        TextBox1.Text = ""
+        TextBox2.Text = ""
+        ComboBox1.SelectedIndex = -1
+        RichTextBox1.Text = ""
+    End Sub
+    Private Sub RichTextBox1_TextChanged(sender As Object, e As EventArgs) Handles RichTextBox1.TextChanged
+        Dim maxWordLimit As Integer = 150
+        Dim words As String() = RichTextBox1.Text.Split({" "}, StringSplitOptions.RemoveEmptyEntries)
+        If words.Length > maxWordLimit Then
+            Dim trimmedText As String = String.Join(" ", words.Take(maxWordLimit))
+            RichTextBox1.Text = trimmedText
+            RichTextBox1.SelectionStart = RichTextBox1.TextLength
+            MessageBox.Show($"Word limit exceeded. Maximum {maxWordLimit} words allowed.", "Word Limit Exceeded", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        End If
+    End Sub
+    Private Sub ComboBox1_SelectedIndexChanged(sender As Object, e As EventArgs) Handles ComboBox1.SelectedIndexChanged
+        If ComboBox1.SelectedItem IsNot Nothing Then
+            ' Display description corresponding to the selected value in ComboBox
+            Dim selectedValue As String = ComboBox1.SelectedItem.ToString()
+            Dim selectedDescription As String = ""
+
+            ' Fetch description from valuesAndDescriptions array based on the selected value
+            For Each pair As KeyValuePair(Of String, String) In valuesAndDescriptions
+                If pair.Key = selectedValue Then
+                    selectedDescription = pair.Value
+                    Exit For
+                End If
+            Next
+
+            ' Display the description in the RichTextBox
+            RichTextBox1.Text = selectedDescription
+            If serviceTypeAmounts.ContainsKey(selectedValue) Then
+                TextBox2.Text = serviceTypeAmounts(selectedValue).ToString()
+            End If
+        End If
+    End Sub
+    Private Sub DataGridView1_CellClick(sender As Object, e As DataGridViewCellEventArgs) Handles DataGridView1.CellClick
+        If e.RowIndex >= 0 AndAlso e.RowIndex < DataGridView1.Rows.Count Then
+            Dim selectedRow As DataGridViewRow = DataGridView1.Rows(e.RowIndex)
+
+            ' Check if the cell value is not Nothing before accessing it
+            If selectedRow.Cells("Service_id Column").Value IsNot Nothing Then
+                TextBox1.Text = selectedRow.Cells("Service_id Column").Value.ToString()
+            End If
+
+            If selectedRow.Cells("vid Column").Value IsNot Nothing Then
+                TextBox3.Text = selectedRow.Cells("vid Column").Value.ToString()
+            End If
+
+            If selectedRow.Cells(" service_type Column").Value IsNot Nothing Then
+                ComboBox1.SelectedItem = selectedRow.Cells(" service_type Column").Value.ToString()
+            End If
+
+            If selectedRow.Cells("Description Column").Value IsNot Nothing Then
+                RichTextBox1.Text = selectedRow.Cells("Description Column").Value.ToString()
+            End If
+
+            If selectedRow.Cells("Amount column").Value IsNot Nothing Then
+                TextBox2.Text = selectedRow.Cells("Amount column").Value.ToString()
+            End If
+        End If
+    End Sub
+
+
+    Private Sub Button5_Click(sender As Object, e As EventArgs) Handles Button5.Click
+        ' Delete data based on the Service ID entered in TextBox1
+        If Not String.IsNullOrWhiteSpace(TextBox1.Text) Then
+            Dim Service_Id As String = TextBox1.Text
+            DeleteData(Service_Id)
+        Else
+            MessageBox.Show("Please enter a service ID for deletion.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        End If
+    End Sub
+    Private Sub UpdateData(ByVal service_Id As String, ByVal vid As String, ByVal service_Type As String, ByVal description As String, ByVal amount As Decimal)
+        Using connection As New MySqlConnection(connectionString)
+            Try
+                connection.Open()
+
+                ' Retrieve the maximum length of the description column from the database schema
+                Dim maxDescriptionLength As Integer = 0
+                Dim schemaQuery As String = "SELECT CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'service_type' AND COLUMN_NAME = 'description'"
+                Using schemaCommand As New MySqlCommand(schemaQuery, connection)
+                    Dim result As Object = schemaCommand.ExecuteScalar()
+                    If result IsNot Nothing AndAlso Not DBNull.Value.Equals(result) Then
+                        maxDescriptionLength = Convert.ToInt32(result)
+                    End If
+                End Using
+
+                If maxDescriptionLength > 0 Then
+                    ' Truncate the description if it exceeds the maximum length
+                    If description.Length > maxDescriptionLength Then
+                        description = description.Substring(0, maxDescriptionLength)
+                    End If
+                Else
+                    MessageBox.Show("Error: Unable to retrieve the maximum length of the description column from the database.")
+                    Return
+                End If
+
+                ' Update data in the database
+                Dim query As String = "UPDATE service_type SET vid = @vid, service_type = @service_Type, description = @description, amount = @amount WHERE Service_id = @Service_Id"
+                Using command As New MySqlCommand(query, connection)
+                    command.Parameters.AddWithValue("@Service_Id", service_Id)
+                    command.Parameters.AddWithValue("@vid", vid)
+                    command.Parameters.AddWithValue("@service_Type", service_Type)
+                    command.Parameters.AddWithValue("@description", description)
+                    command.Parameters.AddWithValue("@amount", amount)
+                    Dim rowsAffected As Integer = command.ExecuteNonQuery()
+                    If rowsAffected > 0 Then
+                        LoadDataIntoDataGridView() ' Reload data after updating
+                    Else
+                        MessageBox.Show("No data updated. Service ID not found.")
+                    End If
+                End Using
+            Catch ex As Exception
+                MessageBox.Show("Error: " & ex.Message)
+            End Try
+        End Using
+    End Sub
+    Private Sub Button4_Click(sender As Object, e As EventArgs) Handles Button4.Click
+        ' Validate input fields
+        If TextBox1.Text = "" OrElse TextBox3.Text = "" OrElse ComboBox1.SelectedItem Is Nothing OrElse RichTextBox1.Text = "" OrElse TextBox2.Text = "" Then
+            MessageBox.Show("Fill every detail", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Return
+        End If
+
+        ' Get data from TextBox, ComboBox, and RichTextBox
+        Dim Service_Id As String = TextBox1.Text
+        Dim vid As String = TextBox3.Text
+        Dim service_Type As String = ComboBox1.SelectedItem.ToString()
+        Dim amount As Decimal = Decimal.Parse(TextBox2.Text)
+        Dim description As String = RichTextBox1.Text
+
+        ' Call UpdateData method to update the database
+        UpdateData(Service_Id, vid, service_Type, description, amount)
+        MessageBox.Show("Details updated successfully", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+    End Sub
+
+    Public Sub TextBox3_TextChanged(sender As Object, e As EventArgs) Handles TextBox3.TextChanged
+        If Not String.IsNullOrEmpty(TextBox3.Text) AndAlso Not (TextBox3.Text.Any(Function(c) Char.IsLetter(c)) AndAlso TextBox3.Text.Any(Function(c) Char.IsDigit(c))) Then
+            MessageBox.Show("Please enter both alphabetic and numeric characters in Vehicle ID.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        End If
+    End Sub
+End Class
